@@ -20,39 +20,74 @@ struct reception {
 
 unsigned int serial;
 
-
+//Threads
 void *ReadFile(void *v);
 void *DisplaySerial(void* reception);
 
+//Basic functions
 int SetSerial(int argc, char *argv[]);
 void ReadSerial(int serial, char buffer[256]);
+void PrintMenu(void);
 
-// Main
+// Main function
 int main(int argc, char *argv[])
 {
-
+    char MenuStrInput;
+    char *StrRef;
+    
     int hSerial = SetSerial(argc, argv);
- 
-    pthread_t thrs[2];
+    int numThreads = 2;
+    pthread_t thrs[numThreads];
 
     // Pass a struct in pthread_create
     struct reception rec;
     rec.serial = hSerial;
 
+    do{
+        PrintMenu(); 
+        scanf("%c%*c", &MenuStrInput);
+        
+        switch(MenuStrInput){
+            case 'o':
+                StrRef = "*IDN?";
+                printf("%s", StrRef);
+                break;
+            case 'f':
+                break;
+            case 'b':
+                break;
+            case '3':
+                break;
+            case '4':
+                break;
+            case 'i':
+                break;
+            case 'e':
+                printf("Exiting...\n");
+                // Finishing threads
+                for(int i = 0; i<numThreads; i++){
+                    pthread_cancel(thrs[i]);
+                }
+                sleep(1);
+                break;
+            default:
+                printf("\nWrong option\n");
+        }
+    } while(MenuStrInput != 'e');
+
+    /*
+    //Call threads
     pthread_create(&thrs[0], NULL, ReadFile, NULL);
     pthread_create(&thrs[1], NULL, DisplaySerial, &rec);
 
     getchar();
-    for (int i = 0; i < 2; ++i) {
+    for (int i = 0; i < numThreads; ++i) {
         pthread_join(thrs[i], NULL);
-    } 
+    }*/
+
+
+
     printf("Stop reading...\n");
-
-
-    //printf("Before Thread\n"); 
-    //pthread_create(&thread_id, NULL, ReadFile, NULL); 
-    //pthread_join(thread_id, NULL); 
-    //printf("After Thread\n"); */
     close(hSerial);
     return 0;
 }
@@ -191,4 +226,17 @@ int SetSerial(int argc, char *argv[]){
     }
 
     return hSerial;
+}
+
+// Displaying the menu
+void PrintMenu(void){
+  printf("\n== Program menu ==\n");
+  printf("Item o: Send message \"*IDN?\"\n");
+  printf("Item f: Turn OFF LED\n");
+  printf("Item b: Read button state\n");
+  printf("Item 3: Read joystick\n");
+  printf("Item 4: Control display\n");
+  printf("Item i: Enter a custom command\n");
+  printf("Item e: Exit\n");
+  printf("Select:\n\n");
 }
