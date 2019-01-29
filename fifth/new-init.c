@@ -12,29 +12,31 @@
 
 #define MAXCHAR 1000
 
-
-
+// Thread variables
 struct reception {
     unsigned int serial;
 };
+
+//Mutexs 
+pthread_mutex_t mutex;
+pthread_cond_t cond;
+int comSignal, readSignal; 
+
 
 unsigned int serial;
 
 //Threads
 void *ReadFile(void *v);
 void *DisplaySerial(void* reception);
+void *DisplayMenu(void *v);
 
 //Basic functions
 int SetSerial(int argc, char *argv[]);
-void ReadSerial(int serial, char buffer[256]);
 void PrintMenu(void);
 
 // Main function
-int main(int argc, char *argv[])
-{
-    char MenuStrInput;
-    char *StrRef;
-    
+int main(int argc, char *argv[]) {
+
     int hSerial = SetSerial(argc, argv);
     int numThreads = 2;
     pthread_t thrs[numThreads];
@@ -43,52 +45,24 @@ int main(int argc, char *argv[])
     struct reception rec;
     rec.serial = hSerial;
 
-    do{
-        PrintMenu(); 
-        scanf("%c%*c", &MenuStrInput);
-        
-        switch(MenuStrInput){
-            case 'o':
-                StrRef = "*IDN?";
-                printf("%s", StrRef);
-                break;
-            case 'f':
-                break;
-            case 'b':
-                break;
-            case '3':
-                break;
-            case '4':
-                break;
-            case 'i':
-                break;
-            case 'e':
-                printf("Exiting...\n");
-                // Finishing threads
-                for(int i = 0; i<numThreads; i++){
-                    pthread_cancel(thrs[i]);
-                }
-                sleep(1);
-                break;
-            default:
-                printf("\nWrong option\n");
-        }
-    } while(MenuStrInput != 'e');
-
-    /*
-    //Call threads
-    pthread_create(&thrs[0], NULL, ReadFile, NULL);
+//  pthread_create(&thrs[0], NULL, ReadFile, NULL);
+    pthread_create(&thrs[0], NULL, DisplayMenu, NULL);
     pthread_create(&thrs[1], NULL, DisplaySerial, &rec);
 
-    getchar();
+    //getchar()
     for (int i = 0; i < numThreads; ++i) {
         pthread_join(thrs[i], NULL);
+    }
+
+    /*
+    // Finishing threads
+    for(int i = 0; i<numThreads; i++){
+        pthread_cancel(thrs[i]);
     }*/
-
-
 
     printf("Stop reading...\n");
     close(hSerial);
+
     return 0;
 }
 
@@ -128,50 +102,107 @@ void *ReadFile(void *v){
     return 0;
 }
 
-// Thread to display information sent be board
+void *DisplayMenu(void *v){
+
+    char MenuStrInput;
+    char *StrRef;
+
+    while(MenuStrInput != 'e'){   
+
+        PrintMenu();
+
+        pthread_mutex_lock(&mutex); //mutex lock
+        while(comSignal == 0){
+            pthread_cond_wait(&cond, &mutex); //wait for the condition
+        }
+        printf("\nBoard data coming through, press \"f\" to see it\n");
+        pthread_mutex_unlock(&mutex);
+
+        scanf("%c%*c", &MenuStrInput);
+        
+        switch(MenuStrInput){
+            case 'o':
+                StrRef = "*IDN?";
+                printf("%s", StrRef);
+                break;
+            case 'f':
+                pthread_mutex_lock(&mutex);
+                readSignal = 1;
+                //fulfill condition for read
+                pthread_mutex_unlock(&mutex);
+                pthread_cond_signal(&cond);
+                break;
+            case 'b':
+                break;
+            case '3':
+                break;
+            case '4':
+                break;
+            case 'i':
+                break;
+            case 'e':
+                printf("out");
+                break;
+            default:
+                printf("\nWrong option\n");
+        }
+    }
+
+    return 0;
+}
+// Thread to display information sent by board
 void *DisplaySerial(void* reception){
+
+    int readOut = 1;
+    int index = 0;
+    int n;
+
+    //Buffers
+    char CharBuff[100];
+    char ReadBuffer[256];
 
     struct reception* rec = (struct reception*) reception;
     
     serial = rec->serial;
 
-    int ReadOut = 1;
-    char ReadBuffer[256];
+    while(readOut){
+        
+        n = read(serial, CharBuff, sizeof(CharBuff));
+        
+        if(n > 0 && strlen(CharBuff) > 0){
+            // get the characters and put it in a buffer
 
-    while(ReadOut){
-        ReadSerial(serial, ReadBuffer);
-        if(strncmp(ReadBuffer, "OUT", 3) != 0){
-            printf("%s\n", ReadBuffer);
-            memset(ReadBuffer, 0, sizeof ReadBuffer); //memset to clear out the buffer
-        } else {
-            memset(ReadBuffer, 0, sizeof ReadBuffer); //memset to clear out the buffer
-            ReadOut = 0;
+            pthread_mutex_lock(&mutex); // lock mutex for message
+            comSignal = 1;
+            //fulfill condition for read
+            pthread_mutex_unlock(&mutex);
+            pthread_cond_signal(&cond);
+                    
+            
+            pthread_mutex_lock(&mutex); //lock mutex for read
+            while(readSignal == 0){
+                pthread_cond_wait(&cond, &mutex); //wait for the condition
+            }
+            for(int i = 0; i < n; i++){
+                if(CharBuff[i] != '\n'){
+                    ReadBuffer[index] = CharBuff[i];
+                    index++;
+                } else {
+                    if(strncmp(ReadBuffer, "OUT", 3) != 0){
+                        printf("%s\n", ReadBuffer);
+                        index = 0;
+                        memset(ReadBuffer, 0, sizeof ReadBuffer); //memset to clear out the buffer
+                    } else {
+                        memset(ReadBuffer, 0, sizeof ReadBuffer); //memset to clear out the buffer
+                        readSignal = 0;
+                        comSignal = 0;
+                    }                    
+                }
+            } // for()
+            pthread_mutex_unlock(&mutex);
         }
     } //while()
     return 0; //always return something after thread
-}
-
-// Function to read characters sent by the board for the joystick logging
-void ReadSerial(int serial, char buffer[256]){
-
-    char chArrBuff[256];
-    int index = 0;
-    int stop = 1;
-
-    while(stop){
-        int n = read(serial, chArrBuff, sizeof(chArrBuff));
-        if(n > 0)
-        {
-            for(int i = 0; i < n; i++){
-                if(chArrBuff[i] != '\n'){
-                    buffer[index] = chArrBuff[i];
-                    index++;
-                } else {
-                    stop = 0; 
-                }
-            } //for()
-        } 
-    } // while()
 }
 
 // Serial setup
@@ -230,13 +261,12 @@ int SetSerial(int argc, char *argv[]){
 
 // Displaying the menu
 void PrintMenu(void){
-  printf("\n== Program menu ==\n");
-  printf("Item o: Send message \"*IDN?\"\n");
-  printf("Item f: Turn OFF LED\n");
-  printf("Item b: Read button state\n");
-  printf("Item 3: Read joystick\n");
-  printf("Item 4: Control display\n");
-  printf("Item i: Enter a custom command\n");
-  printf("Item e: Exit\n");
-  printf("Select:\n\n");
+    printf("\n== Program menu ==\n");
+    printf("Item o: Send message \"*IDN?\"\n");
+    printf("Item f: Turn OFF LED\n");
+    printf("Item b: Read button state\n");
+    printf("Item 3: Read joystick\n");
+    printf("Item 4: Control display\n");
+    printf("Item i: Enter a custom command\n");
+    printf("Item e: Exit\n");
 }

@@ -253,7 +253,7 @@ void main(void)
 		case JOY_SEL:
 			BSP_LCD_Clear(LCD_COLOR_WHITE);
 			{
-				msg = "Welcome to Nucleo!\r\n";
+				msg = "OUT\n";
 				HAL_UART_Transmit( &hUART2, (uint8_t*)msg, strlen(msg), 0xFFFF);
 			}
 			BSP_LED_Toggle( LED2 );
