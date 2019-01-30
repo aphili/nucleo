@@ -6,12 +6,11 @@
 #include <errno.h>      // Error number definitions
 #include <termios.h>    // POSIX terminal control definitions
 #include <fcntl.h>
-
 #include <pthread.h> 
 
 
 #define MAXCHAR 1000
-#define THREADS_NUM 3
+#define THREADS_NUM 4
 
 
 // Thread variables
@@ -19,16 +18,19 @@ struct reception {
     unsigned int serial;
 };
 
+unsigned int serial;
+
 //Threads
 pthread_t thrs[THREADS_NUM];
 
 //Mutexs 
 pthread_mutex_t mutex;
 pthread_cond_t cond;
+
+//Gloal variables
 int comSignal, readSignal; 
+char filename[256];
 
-
-unsigned int serial;
 
 //Threads
 void *ReadFile(void *v);
@@ -48,11 +50,12 @@ int main(int argc, char *argv[]) {
     struct reception rec;
     rec.serial = hSerial;
 
+    printf("%lu", strlen(filename));
 
-    //pthread_create(&thrs[0], NULL, ReadFile, NULL);
     pthread_create(&thrs[0], NULL, DisplayMenu, NULL);
     pthread_create(&thrs[1], NULL, MenuSelection, NULL);
     pthread_create(&thrs[2], NULL, DisplaySerial, &rec);
+    pthread_create(&thrs[3], NULL, ReadFile, NULL);
 
     //getchar()
     for (int i = 0; i < THREADS_NUM; ++i) {
@@ -72,32 +75,39 @@ void *ReadFile(void *v){
     FILE *fp;
     FILE *fa;
     char str[MAXCHAR];
-    char filename[256];
 
-    strcpy(filename, "splash.txt");
-    // Open the file once to check if there's an end of line at EOF
-    fa = fopen(filename, "a+");
-    fseek(fa, -1, SEEK_END); 
-
-    //look if '\n' at the end of the file, if not put it
-    if(fgetc(fa) != '\n'){
-        fprintf(fa, "%s", "\n");
-    }
-
-    // Open again to read the file
-    fp = fopen(filename, "r");
-
-    if (fp){
-        while (fgets(str, MAXCHAR, fp) != NULL){
-        printf("%s", str);
-        usleep(50000); //50ms delay otherwise it is sent too quickly for the board
+    while(1){
+        pthread_mutex_lock(&mutex); //mutex lock
+        while(strlen(filename) == 0){
+            pthread_cond_wait(&cond, &mutex); //wait for the condition
         }
-    } else {
-        printf("Could not open file %s",filename);
+        printf("heyo");
+        // Open the file once to check if there's an end of line at EOF
+        fa = fopen(filename, "a+");
+        fseek(fa, -1, SEEK_END); 
+
+        //look if '\n' at the end of the file, if not put it
+        if(fgetc(fa) != '\n'){
+            fprintf(fa, "%s", "\n");
+        }
+
+        // Open again to read the file
+        fp = fopen(filename, "r");
+
+        if (fp){
+            while (fgets(str, MAXCHAR, fp) != NULL){
+            printf("%s", str);
+            usleep(50000); //50ms delay otherwise it is sent too quickly for the board
+            }
+        } else {
+            printf("Could not open file %s",filename);
+        }
+        
+        printf("\n");
+        pthread_mutex_unlock(&mutex);
+        memset(filename, 0, sizeof(filename));
+        sleep(1);
     }
-    
-    printf("\n");
-    sleep(1);
     return 0;
 }
 
@@ -203,6 +213,14 @@ void *MenuSelection(void *v){
             case 'b':
                 break;
             case '3':
+                //Pass name of a file to the readfile thread
+                pthread_mutex_lock(&mutex);
+                printf("Enter your file name...\n");
+                //waiting for the filename
+                fgets(filename, 100, stdin);
+                strtok(filename, "\n");
+                pthread_mutex_unlock(&mutex);
+                pthread_cond_signal(&cond);
                 break;
             case '4':
                 break;
