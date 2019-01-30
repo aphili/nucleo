@@ -28,12 +28,13 @@ pthread_mutex_t mutex;
 pthread_cond_t cond;
 
 //Gloal variables
-int comSignal, readSignal; 
+int comSignal, readSignal, readFile; 
 char filename[256];
 
 
+
 //Threads
-void *ReadFile(void *v);
+void *ReadFile(void* reception);
 void *DisplaySerial(void* reception);
 void *DisplayMenu(void *v);
 void *MenuSelection(void *v);
@@ -50,12 +51,10 @@ int main(int argc, char *argv[]) {
     struct reception rec;
     rec.serial = hSerial;
 
-    printf("%lu", strlen(filename));
-
-    pthread_create(&thrs[0], NULL, DisplayMenu, NULL);
-    pthread_create(&thrs[1], NULL, MenuSelection, NULL);
-    pthread_create(&thrs[2], NULL, DisplaySerial, &rec);
-    pthread_create(&thrs[3], NULL, ReadFile, NULL);
+    pthread_create(&thrs[0], NULL, ReadFile, &rec);
+    pthread_create(&thrs[1], NULL, DisplayMenu, NULL);
+    pthread_create(&thrs[2], NULL, MenuSelection, NULL);
+    pthread_create(&thrs[3], NULL, DisplaySerial, &rec);
 
     //getchar()
     for (int i = 0; i < THREADS_NUM; ++i) {
@@ -68,21 +67,106 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
+// Displaying the menu
+void *DisplayMenu(void* v){
+
+    printf("\n== Program menu ==\n");
+    printf("Item o: Send message \"*IDN?\"\n");
+    printf("Item f: Turn OFF LED\n");
+    printf("Item b: Read button state\n");
+    printf("Item 3: Read joystick\n");
+    printf("Item 4: Control display\n");
+    printf("Item i: Enter a custom command\n");
+    printf("Item e: Exit\n");
+    pthread_mutex_lock(&mutex); //mutex lock
+    while(comSignal == 0){
+        pthread_cond_wait(&cond, &mutex); //wait for the condition
+    }
+    printf("\nBoard data coming through, press \"f\" to see it\n");
+    pthread_mutex_unlock(&mutex);
+
+    return 0;
+}
+
+// Menu selection thread
+void *MenuSelection(void *v){
+    
+    // Menu variables
+    char MenuStrInput;
+    char *StrRef;
+    
+    do{
+        scanf("%c%*c", &MenuStrInput);
+        switch(MenuStrInput){
+            case 'o':
+                StrRef = "*IDN?";
+                printf("%s", StrRef);
+                break;
+            case 'f':
+                pthread_mutex_lock(&mutex);
+                readSignal = 1;
+                //fulfill condition for read
+                pthread_mutex_unlock(&mutex);
+                pthread_cond_signal(&cond);
+                break;
+            case 'b':
+                break;
+            case '3':
+                //Pass name of a file to the readfile thread
+                // concatenate '\n' to tell the buffer on the board that it's the end 
+                printf("Enter your file name...\n");
+                //waiting for the filename
+                fgets(filename, 100, stdin);
+                strtok(filename, "\n");
+                pthread_mutex_lock(&mutex);
+                readFile= 1;
+                //fulfill condition for read
+                pthread_mutex_unlock(&mutex);
+                pthread_cond_signal(&cond);
+                break;
+            case '4':
+                break;
+            case 'i':
+                break;
+            case 'e':
+                // Finishing threads
+                for(int i = 0; i<THREADS_NUM; i++){
+                    pthread_cancel(thrs[i]);
+                }
+                return 0;
+                break;
+            default:
+                printf("\nWrong option\n");
+        }
+    } while(MenuStrInput != 'e');
+
+    return 0;
+}
+
+
 // Thread to open a file and read it
 // You can only send a point to a thread, however a pointer can point to a "normal structure"
-void *ReadFile(void *v){
+void *ReadFile(void* reception){
 
     FILE *fp;
     FILE *fa;
     char str[MAXCHAR];
+    char com[256];
+
+    struct reception* rec = (struct reception*) reception;
+    
+    serial = rec->serial;
 
     while(1){
         pthread_mutex_lock(&mutex); //mutex lock
-        while(strlen(filename) == 0){
+        while(readFile == 0){
             pthread_cond_wait(&cond, &mutex); //wait for the condition
         }
-        printf("heyo");
-        // Open the file once to check if there's an end of line at EOF
+
+        com[0] = 3;
+        strcat(com, "\n");
+        write(serial, com, strlen(com));
+        usleep(50000);
         fa = fopen(filename, "a+");
         fseek(fa, -1, SEEK_END); 
 
@@ -97,6 +181,7 @@ void *ReadFile(void *v){
         if (fp){
             while (fgets(str, MAXCHAR, fp) != NULL){
             printf("%s", str);
+            write( serial, str, strlen(str));
             usleep(50000); //50ms delay otherwise it is sent too quickly for the board
             }
         } else {
@@ -104,9 +189,9 @@ void *ReadFile(void *v){
         }
         
         printf("\n");
-        pthread_mutex_unlock(&mutex);
-        memset(filename, 0, sizeof(filename));
         sleep(1);
+        pthread_mutex_unlock(&mutex);
+        readFile = 0;
     }
     return 0;
 }
@@ -168,78 +253,8 @@ void *DisplaySerial(void* reception){
     return 0; //always return something after thread
 }
 
-// Displaying the menu
-void *DisplayMenu(void* v){
 
-    printf("\n== Program menu ==\n");
-    printf("Item o: Send message \"*IDN?\"\n");
-    printf("Item f: Turn OFF LED\n");
-    printf("Item b: Read button state\n");
-    printf("Item 3: Read joystick\n");
-    printf("Item 4: Control display\n");
-    printf("Item i: Enter a custom command\n");
-    printf("Item e: Exit\n");
-    pthread_mutex_lock(&mutex); //mutex lock
-    while(comSignal == 0){
-        pthread_cond_wait(&cond, &mutex); //wait for the condition
-    }
-    printf("\nBoard data coming through, press \"f\" to see it\n");
-    pthread_mutex_unlock(&mutex);
 
-    return 0;
-}
-
-// Menu selection thread
-void *MenuSelection(void *v){
-    
-    // Menu variables
-    char MenuStrInput;
-    char *StrRef;
-    
-    do{
-        scanf("%c%*c", &MenuStrInput);
-        switch(MenuStrInput){
-            case 'o':
-                StrRef = "*IDN?";
-                printf("%s", StrRef);
-                break;
-            case 'f':
-                pthread_mutex_lock(&mutex);
-                readSignal = 1;
-                //fulfill condition for read
-                pthread_mutex_unlock(&mutex);
-                pthread_cond_signal(&cond);
-                break;
-            case 'b':
-                break;
-            case '3':
-                //Pass name of a file to the readfile thread
-                pthread_mutex_lock(&mutex);
-                printf("Enter your file name...\n");
-                //waiting for the filename
-                fgets(filename, 100, stdin);
-                strtok(filename, "\n");
-                pthread_mutex_unlock(&mutex);
-                pthread_cond_signal(&cond);
-                break;
-            case '4':
-                break;
-            case 'i':
-                break;
-            case 'e':
-                // Finishing threads
-                for(int i = 0; i<THREADS_NUM; i++){
-                    pthread_cancel(thrs[i]);
-                }
-                return 0;
-                break;
-            default:
-                printf("\nWrong option\n");
-        }
-    } while(MenuStrInput != 'e');
-
-    return 0;
-}
 
 // Serial setup
 int SetSerial(int argc, char *argv[]){
