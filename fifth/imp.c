@@ -25,6 +25,7 @@ int num;
 
 void ReadFile(void);
 void BlockProcessing(char *block, int blockId);
+void ContentProcessing(int lineIndex, struct Block Blocks);
 
 int StrTokenizer(char *myString, char myDelim[], char *myArr[MAXCHAR]){
   
@@ -40,7 +41,6 @@ int StrTokenizer(char *myString, char myDelim[], char *myArr[MAXCHAR]){
     }
 
     return 0;
-
 }
 
 
@@ -61,19 +61,8 @@ int main(int argc, char *argv[])
         }
     }
     
-//    printf("%s\n", strBlock[1]);
 
     BlockProcessing(strBlock[1], 1);
-
-    /*
-    while( i <= strlen(strBlock[0])){
-        if(strBlock[0][i] != '\n'){
-            printf("%c", strBlock[0][i]);
-        } else {
-            printf("\n");
-        }
-        i++;
-    }*/
 
     return 0;
 
@@ -123,8 +112,7 @@ void BlockProcessing(char *block, int blockId){
 
     // i is index of characters in block
     // k is i but with reset for new lines
-    int i, k, m, lineIndex = 0;
-    char *lineTokens[500];
+    int i, k, lineIndex = 0;
 
     struct Block Blocks[blockIndex];
     Blocks[blockId].id = blockId;
@@ -141,12 +129,22 @@ void BlockProcessing(char *block, int blockId){
         }
         i++;
     }
+    
+    ContentProcessing(lineIndex, Blocks[blockId]);
+}
 
+void ContentProcessing(int lineIndex, struct Block Blocks){
+    
+    char* lineTokens[500];
+    char* concatTokens[100];
+    char* concatTokensRight[100];
+    int m,p,q = 0;
     //processing information in blocks
     //loop through lines of each blocks and then decompose the actions
-    for(int n; n <= lineIndex; n++){
-        m = 0;
-        StrTokenizer(Blocks[blockId].blockLines[n], ":", lineTokens);
+    for(int n = 0; n <= lineIndex; n++){
+                
+        StrTokenizer(Blocks.blockLines[n], ":", lineTokens);
+        
         while(lineTokens[m] != NULL){
             if(strncmp(lineTokens[m], "#include", 8) == 0){
                 printf("%s\n\n", lineTokens[m+1]);
@@ -155,6 +153,30 @@ void BlockProcessing(char *block, int blockId){
                 if(lineTokens[m+1] == NULL){
                     //wait for read indefinitely
                 } else {
+                    p = n + 1;
+                    while(p <= lineIndex){
+                        StrTokenizer(Blocks.blockLines[p], ":", concatTokens);
+                        while(concatTokens[q] != NULL){
+                            if(strncmp(concatTokens[q], "#if", 3) == 0){
+                                printf("%s\n", concatTokens[q+1]);
+                                if(strncmp(concatTokens[q+1], "JOY_LEFT", 8) == 0) {
+
+                                } else if(strncmp(concatTokens[q+1], "JOY_UP", 6) == 0) {
+
+                                } else if(strncmp(concatTokens[q+1], "JOY_DOWN", 8) == 0) {
+
+                                } else if(strncmp(concatTokens[q+1], "JOY_RIGHT", 9) == 0) {
+
+                                } else if(strncmp(concatTokens[q+1], "#else", 5) == 0){
+                                
+                                }
+                            }
+                            q++;
+                        }
+                        q = 0;
+                            // retokenize and then goto m+1
+                        p++;
+                    }
                     printf("Waiting %d seconds for joystick input...\n", atoi(lineTokens[m+1])/1000);
                     sleep(atoi(lineTokens[m+1])/1000);
                 }
@@ -162,16 +184,14 @@ void BlockProcessing(char *block, int blockId){
                 printf("Exiting ...");
             } else if(strncmp(lineTokens[m], "DRAW", 4) == 0){
                 // send concat with m+1 / or line and processing after directly on the board
-			} else {
+            } else {
 
             }
 
             m++;
-        }
-    }
+        } //while()
+
+        m = 0;
+    } //for()
 }
-
-
-
-//printf("%c || 0x%x\n", block[i], block[i]);
 
