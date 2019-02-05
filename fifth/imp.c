@@ -18,6 +18,7 @@ char* lineSep[500];
 int num;
 
 void ReadFile(void);
+void BlockProcessing(char *block);
 
 int StrTokenizer(char *myString, char myDelim[], char *myArr[MAXCHAR]){
   
@@ -28,12 +29,10 @@ int StrTokenizer(char *myString, char myDelim[], char *myArr[MAXCHAR]){
   {
       myArr[i] = malloc(strlen(token) + 1); //needs stdlib
       strcpy(myArr[i], token);
-      token = strtok(NULL, " ");
+      token = strtok(NULL, myDelim);
       i++;
   }
   
-  //num = (sizeof(&myArr) / sizeof(&myArr[0]));
-
   return 0;
 
 }
@@ -56,7 +55,11 @@ int main(int argc, char *argv[])
         }
     }
     
-    //printf("%s\n", strBlock[0]);
+    //printf("%s\n", strBlock[1]);
+
+    BlockProcessing(strBlock[0]);
+
+    /*
     while( i <= strlen(strBlock[0])){
         if(strBlock[0][i] != '\n'){
             printf("%c", strBlock[0][i]);
@@ -64,10 +67,8 @@ int main(int argc, char *argv[])
             printf("\n");
         }
         i++;
-    }
+    }*/
 
-    printf("%d", i);
-    
     return 0;
 
 }
@@ -112,4 +113,31 @@ void ReadFile(void){
 }
 
 
-//printf("%c || 0x%x\n", strBlock[0][i], strBlock[0][i]);
+void BlockProcessing(char *block){
+
+    int i, j, k, l = 0;
+    char lines[50][500];
+    char *token;
+    char *tiktok[100];
+
+    // reading each line of the block
+    while( i <= strlen(block)){
+        if(block[i] == '\n'){
+            j++;
+            k = 0;
+        } else {
+            //printf("%c", block[i]);
+            lines[j][k] = block[i];
+            k++;
+        }
+        i++;
+    }
+    
+    StrTokenizer(lines[1], ":", tiktok);
+
+    printf("%s", tiktok[0]);
+}
+
+
+//printf("%c || 0x%x\n", block[i], block[i]);
+
