@@ -19,7 +19,6 @@ struct Block
 
 
 char *strFile;
-char* lineSep[500];
 int blockIndex;
 
 int num;
@@ -30,8 +29,7 @@ void BlockProcessing(char *block, int blockId);
 int StrTokenizer(char *myString, char myDelim[], char *myArr[MAXCHAR]){
   
     int i = 0;
-    char *strDup = strcpy(strDup, myString);
-    char *token = strtok(strDup, myDelim);
+    char *token = strtok(myString, myDelim);
 
     while(token != NULL)
     {
@@ -65,7 +63,7 @@ int main(int argc, char *argv[])
     
 //    printf("%s\n", strBlock[1]);
 
-    BlockProcessing(strBlock[0], 0);
+    BlockProcessing(strBlock[1], 1);
 
     /*
     while( i <= strlen(strBlock[0])){
@@ -125,10 +123,11 @@ void BlockProcessing(char *block, int blockId){
 
     // i is index of characters in block
     // k is i but with reset for new lines
-    int i, k, lineIndex = 0;
+    int i, k, m, lineIndex = 0;
+    char *lineTokens[500];
 
     struct Block Blocks[blockIndex];
-
+    Blocks[blockId].id = blockId;
 
     // reading each line of the block
     while( i <= strlen(block)){
@@ -143,17 +142,34 @@ void BlockProcessing(char *block, int blockId){
         i++;
     }
 
-    Blocks[blockId].blockLines[lineIndex][k] = block[i];
-    Blocks[blockId].id = blockId;
+    //processing information in blocks
+    //loop through lines of each blocks and then decompose the actions
+    for(int n; n <= lineIndex; n++){
+        m = 0;
+        StrTokenizer(Blocks[blockId].blockLines[n], ":", lineTokens);
+        while(lineTokens[m] != NULL){
+            if(strncmp(lineTokens[m], "#include", 8) == 0){
+                printf("%s\n\n", lineTokens[m+1]);
+                //add action to read file
+            } else if(strncmp(lineTokens[m], "#wait_for_joystick", 17) == 0){
+                if(lineTokens[m+1] == NULL){
+                    //wait for read indefinitely
+                } else {
+                    printf("Waiting %d seconds for joystick input...\n", atoi(lineTokens[m+1])/1000);
+                    sleep(atoi(lineTokens[m+1])/1000);
+                }
+            } else if(strncmp(lineTokens[m], "#exit", 5) == 0){
+                printf("Exiting ...");
+            } else if(strncmp(lineTokens[m], "DRAW", 4) == 0){
+                // send concat with m+1 / or line and processing after directly on the board
+			} else {
 
-    int w = 0;
-    while(w <= lineIndex){
-        printf("The block id is :%d\n It's content is : %s\n\n",  Blocks[blockId].id, Blocks[blockId].blockLines[w]);
-        w++;
+            }
+
+            m++;
+        }
     }
-
 }
-
 
 
 
