@@ -11,29 +11,37 @@
 
 #define MAXCHAR 1000
 
+struct Block
+{ 
+    int id;
+    char blockLines[50][500];
+};
+
 
 char *strFile;
 char* lineSep[500];
+int blockIndex;
 
 int num;
 
 void ReadFile(void);
-void BlockProcessing(char *block);
+void BlockProcessing(char *block, int blockId);
 
 int StrTokenizer(char *myString, char myDelim[], char *myArr[MAXCHAR]){
   
-  int i = 0;
-  char *token = strtok(myString, myDelim);
-  
-  while(token != NULL)
-  {
-      myArr[i] = malloc(strlen(token) + 1); //needs stdlib
-      strcpy(myArr[i], token);
-      token = strtok(NULL, myDelim);
-      i++;
-  }
-  
-  return 0;
+    int i = 0;
+    char *strDup = strcpy(strDup, myString);
+    char *token = strtok(strDup, myDelim);
+
+    while(token != NULL)
+    {
+        myArr[i] = malloc(strlen(token) + 1); //needs stdlib
+        strcpy(myArr[i], token);
+        token = strtok(NULL, myDelim);
+        i++;
+    }
+
+    return 0;
 
 }
 
@@ -41,7 +49,7 @@ int StrTokenizer(char *myString, char myDelim[], char *myArr[MAXCHAR]){
 int main(int argc, char *argv[])
 {
     ReadFile();
-    int blockIndex, strIndex;
+    int strIndex;
     char strBlock[10][1000];
     char action;
     int i = 0;
@@ -55,9 +63,9 @@ int main(int argc, char *argv[])
         }
     }
     
-    //printf("%s\n", strBlock[1]);
+//    printf("%s\n", strBlock[1]);
 
-    BlockProcessing(strBlock[0]);
+    BlockProcessing(strBlock[0], 0);
 
     /*
     while( i <= strlen(strBlock[0])){
@@ -113,30 +121,40 @@ void ReadFile(void){
 }
 
 
-void BlockProcessing(char *block){
+void BlockProcessing(char *block, int blockId){
 
-    int i, j, k, l = 0;
-    char lines[50][500];
-    char *token;
-    char *tiktok[100];
+    // i is index of characters in block
+    // k is i but with reset for new lines
+    int i, k, lineIndex = 0;
+
+    struct Block Blocks[blockIndex];
+
 
     // reading each line of the block
     while( i <= strlen(block)){
         if(block[i] == '\n'){
-            j++;
+            lineIndex++;
             k = 0;
         } else {
             //printf("%c", block[i]);
-            lines[j][k] = block[i];
+            Blocks[blockId].blockLines[lineIndex][k] = block[i];
             k++;
         }
         i++;
     }
-    
-    StrTokenizer(lines[1], ":", tiktok);
 
-    printf("%s", tiktok[0]);
+    Blocks[blockId].blockLines[lineIndex][k] = block[i];
+    Blocks[blockId].id = blockId;
+
+    int w = 0;
+    while(w <= lineIndex){
+        printf("The block id is :%d\n It's content is : %s\n\n",  Blocks[blockId].id, Blocks[blockId].blockLines[w]);
+        w++;
+    }
+
 }
+
+
 
 
 //printf("%c || 0x%x\n", block[i], block[i]);
