@@ -30,7 +30,10 @@ void ContentProcessing(int lineIndex, struct Block Blocks);
 int StrTokenizer(char *myString, char myDelim[], char *myArr[MAXCHAR]){
   
     int i = 0;
-    char *token = strtok(myString, myDelim);
+    char strCopy[200]; // prevents strtok() changes the original string
+    strcpy(strCopy, myString);
+
+    char *token = strtok(strCopy, myDelim);
 
     while(token != NULL)
     {
@@ -61,8 +64,7 @@ int main(int argc, char *argv[])
         }
     }
     
-
-    BlockProcessing(strBlock[1], 1);
+    BlockProcessing(strBlock[3], 3);
 
     return 0;
 
@@ -129,7 +131,7 @@ void BlockProcessing(char *block, int blockId){
         }
         i++;
     }
-    
+
     ContentProcessing(lineIndex, Blocks[blockId]);
 }
 
@@ -181,11 +183,15 @@ void ContentProcessing(int lineIndex, struct Block Blocks){
                     sleep(atoi(lineTokens[m+1])/1000);
                 }
             } else if(strncmp(lineTokens[m], "#exit", 5) == 0){
-                printf("Exiting ...");
+                printf("Exiting...\n");
+                sleep(1);
             } else if(strncmp(lineTokens[m], "DRAW", 4) == 0){
+                printf("%s\n", Blocks.blockLines[n]);
+                //send Blocks.blockLines[n]
+                usleep(500000);
                 // send concat with m+1 / or line and processing after directly on the board
             } else {
-
+                
             }
 
             m++;
@@ -194,4 +200,3 @@ void ContentProcessing(int lineIndex, struct Block Blocks){
         m = 0;
     } //for()
 }
-
