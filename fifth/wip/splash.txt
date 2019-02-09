@@ -1,0 +1,33 @@
+// comment line
+#label:PartA: //start of a block
+#include:InitDataSet.txt: // the TXT file contains just a list of commands, e.g.: "*IDN?\nLED OFF\n"
+
+#label:PartB:
+#include:IntroDataSet2.txt: // e.g.: "DRAW:SETFONT 12\nDRAW:TEXT 64,120,Press: Up or Down,1\n" 
+// wait for joystick for 5 seconds - if no action then use JOY_NONE = it will go to else section
+#wait_for_joystick:5000:JOY_NONE:
+#if:JOY_UP:goto:PartD:
+#if:JOY_DOWN:goto:PartC:
+#else:goto:PartB:
+
+#label:PartD:
+// nothing, file is finished and the app closes itself
+#exit:
+
+#label:PartC
+DRAW:CLEAR 2
+DRAW:SETTEXTCOLOR 3 
+DRAW:CIRCLE 49,20,10
+DRAW:CIRCLE 79,20,10
+DRAW:SETTEXTCOLOR 2 
+DRAW:LINE 55,40,60,45 
+DRAW:LINE 68,45,73,40 
+DRAW:LINE 60,45,68,45 
+DRAW:SETFONT 12
+DRAW:TEXT 64,120,Nucleo RULEZ!,1
+DRAW:TEXT 64,120,Press Left or Right!,1
+// no parameter for #wait_for_joystick = wait forewer
+#wait_for_joystick:
+#if:JOY_LEFT:goto:PartA:
+#if:JOY_RIGHT:goto:PartB:
+#else:goto:PartC:
