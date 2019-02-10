@@ -1,3 +1,5 @@
+// implementation file
+
 #include <stdio.h>      // standard input / output functions
 #include <stdlib.h>
 #include <string.h>     // string function definitions
